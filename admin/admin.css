@@ -1,0 +1,274 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    color: #222;
+}
+
+.admin-page {
+    min-height: 100vh;
+    padding: 40px 20px;
+}
+
+.restaurant-header {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.restaurant-name {
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 3px;
+}
+
+.menu-label {
+    font-size: 14px;
+    letter-spacing: 2px;
+}
+
+.admin-container {
+    max-width: 700px;
+    margin: 50px auto;
+    background: white;
+    padding: 35px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.admin-container h1 {
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+#dish-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+#dish-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#dish-form input,
+#dish-form textarea {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+}
+
+#dish-form input:focus,
+#dish-form textarea:focus {
+    border-color: #888;
+}
+
+#dish-form textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.checkbox-label {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 10px !important;
+}
+
+.checkbox-label input {
+    width: auto !important;
+}
+
+#dish-form button {
+    margin-top: 5px;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #222;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#dish-form button:hover {
+    opacity: 0.85;
+}
+
+#message {
+    margin-top: 20px;
+    font-weight: 600;
+}
+
+.dish-list-section {
+    max-width: 1000px;
+    margin: 40px auto;
+}
+
+.dish-list-section h2 {
+    margin-bottom: 20px;
+}
+
+#dish-list {
+    display: grid;
+    gap: 15px;
+}
+
+/* Dish card */
+
+.admin-dish {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 25px;
+    align-items: center;
+}
+
+.dish-details {
+    min-width: 0;
+}
+
+.admin-dish h3 {
+    margin: 0 0 8px;
+    font-size: 20px;
+}
+
+.admin-dish p {
+    margin: 6px 0;
+}
+
+.admin-dish a {
+    display: inline-block;
+    margin-top: 8px;
+    text-decoration: none;
+    color: #222;
+    font-weight: 600;
+}
+
+/* QR */
+.qr-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-code {
+    text-align: center;
+}
+
+.qr-code canvas {
+    display: block;
+    margin: 0 auto;
+}
+
+.download-qr-button {
+    margin-top: 10px;
+    padding: 9px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #222;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.download-qr-button:hover {
+    opacity: 0.75;
+}
+
+/* Buttons */
+
+.dish-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.dish-actions button {
+    padding: 9px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.edit-button {
+    background: #222;
+    color: white;
+}
+
+.delete-button {
+    background: #e8e8e8;
+    color: #222;
+}
+
+.dish-actions button:hover {
+    opacity: 0.75;
+}
+
+/* Cancel button */
+
+.cancel-button {
+    margin-top: -8px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: white;
+    color: #222;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.cancel-button:hover {
+    background: #f5f5f5;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+    .admin-page {
+        padding: 25px 15px;
+    }
+
+    .admin-container {
+        margin-top: 35px;
+        padding: 25px 20px;
+    }
+
+    .admin-dish {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .qr-section {
+    align-items: flex-start;
+}
+
+    .qr-code {
+        text-align: left;
+    }
+
+    .qr-code canvas {
+        margin: 0;
+    }
+
+    .dish-actions {
+        flex-wrap: wrap;
+    }
+}

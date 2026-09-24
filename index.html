@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Premium Sushi | Restaurant</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <script
+        type="module"
+        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js">
+    </script>
+</head>
+
+<body>
+
+    <main class="menu-page">
+
+        <header class="restaurant-header">
+            <span class="restaurant-name">SAKURA</span>
+            <span class="menu-label">MENU</span>
+        </header>
+
+        <section class="dish-info">
+
+            <div class="dish-text">
+                <p class="category"></p>
+
+<h1></h1>
+
+<p class="description"></p>
+
+<div class="price"></div>
+            </div>
+
+            <div class="viewer-container">
+
+                <model-viewer
+                    src="./models/sushi-original.glb"
+                    alt="3D model of Premium Sushi"
+                    camera-controls
+                    auto-rotate
+                    shadow-intensity="1"
+                    exposure="1"
+                    environment-image="neutral"
+                    ar
+                    ar-modes="webxr scene-viewer quick-look">
+
+                    <button slot="ar-button" class="ar-button">
+                        📱 View in AR
+                    </button>
+
+                </model-viewer>
+
+                <p class="viewer-hint">
+                    👆 Drag to rotate · 🤏 Pinch to zoom
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SAKURA | Admin</title>
+
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <main class="admin-page">
+
+        <header class="restaurant-header">
+            <span class="restaurant-name">SAKURA</span>
+            <span class="menu-label">ADMIN</span>
+
+            <button type="button" id="logout-button">
+        Logout
+    </button>
+        </header>
+
+        <section class="admin-container">
+
+            <h1>Add New Dish</h1>
+
+            <form id="dish-form">
+
+                <label>
+                    Dish Name
+                    <input
+                        type="text"
+                        id="name"
+                        placeholder="e.g. Premium Ramen"
+                        required>
+                </label>
+
+                <label>
+                    Slug
+                    <input
+                        type="text"
+                        id="slug"
+                        placeholder="e.g. ramen"
+                        required>
+                </label>
+
+                <label>
+                    Category
+                    <input
+                        type="text"
+                        id="category"
+                        placeholder="e.g. MAIN COURSE"
+                        required>
+                </label>
+
+                <label>
+                    Description
+                    <textarea
+                        id="description"
+                        placeholder="Describe the dish..."
+                        required></textarea>
+                </label>
+
+                <label>
+                    Price
+                    <input
+                        type="number"
+                        id="price"
+                        placeholder="999"
+                        min="0"
+                        required>
+                </label>
+
+               <label>
+    3D Model
+    <input
+        type="file"
+        id="model"
+        accept=".glb"
+        >
+</label>
+
+                <label class="checkbox-label">
+                    <input
+                        type="checkbox"
+                        id="available"
+                        checked>
+
+                    Available
+                </label>
+
+                <button type="submit" id="submit-button">
+    Add Dish
+</button>
+
+<button type="button" id="cancel-edit" class="cancel-button">
+    Cancel
+</button>
+
+            </form>
+
+            <p id="message"></p>
+            <section class="dish-list-section">
+
+    <h2>Current Dishes</h2>
+
+    <div id="dish-list"></div>
+
+</section>
+
+        </section>
+
+    </main>
+
+    <script src="admin.js"></script>
+
+</body>
+</html>
+```
