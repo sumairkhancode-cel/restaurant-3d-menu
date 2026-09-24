@@ -10,6 +10,7 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use(
     session({
@@ -51,8 +52,6 @@ const upload = multer({
     }
 });
 
-const PORT = 3000;
-
 // Middleware
 app.use(express.json());
 
@@ -82,9 +81,9 @@ mongoose
     .then(() => {
         console.log("MongoDB connected successfully");
 
-        app.listen(3000, "0.0.0.0", () => {
-    console.log("Restaurant menu running on port 3000");
-        });
+        app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
     })
     .catch((error) => {
         console.error("MongoDB connection failed:");
