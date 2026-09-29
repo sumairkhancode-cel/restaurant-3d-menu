@@ -8,9 +8,16 @@ const Dish = require("./models/Dish");
 const Admin = require("./models/admin");
 const bcrypt = require("bcrypt");
 const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 app.use(
     session({
@@ -23,15 +30,7 @@ app.use(
     })
 );
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, "assets"));
-    },
-
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + "-" + file.originalname);
-    }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,
@@ -187,7 +186,7 @@ app.delete("/api/dishes/:id",requireAdmin, async (req, res) => {
     }
 });
 app.post("/api/upload-model", requireAdmin, (req, res) => {
-    upload.single("model")(req, res, (error) => {
+    upload.single("model")(req, res, async (error) => {
         if (error) {
             console.error(error);
 
@@ -208,12 +207,40 @@ app.post("/api/upload-model", requireAdmin, (req, res) => {
             });
         }
 
-        res.json({
-            message: "Model uploaded successfully",
-            modelUrl: `/assets/${req.file.filename}`
-        });
+        try {
+            const result = await new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                    {
+                        resource_type: "raw",
+                        folder: "restaurant-3d-menu"
+                    },
+                    (error, result) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve(result);
+                        }
+                    }
+                );
+
+                stream.end(req.file.buffer);
+            });
+
+            res.json({
+                message: "Model uploaded successfully",
+                modelUrl: result.secure_url
+            });
+
+        } catch (error) {
+            console.error("Cloudinary upload error:", error);
+
+            res.status(500).json({
+                message: "Failed to upload model to Cloudinary"
+            });
+        }
     });
 });
+
 app.post("/api/dishes",requireAdmin, async (req, res) => {
     try {
         const dish = await Dish.create(req.body);
