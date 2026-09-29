@@ -13,6 +13,7 @@ async function loadDish() {
 
         document.querySelector(".category").textContent = dish.category;
         document.querySelector("h1").textContent = dish.name;
+        document.title = `${dish.name} | Restaurant`;
         document.querySelector(".description").textContent =
             dish.description;
         document.querySelector(".price").textContent = `Rs. ${dish.price}`;
