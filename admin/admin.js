@@ -2,6 +2,7 @@ const form = document.querySelector("#dish-form");
 const message = document.querySelector("#message");
 let editingDishId = null;
 let editingModelUrl = null;
+let editingUsdzUrl = "";
 const submitButton = form.querySelector("button[type='submit']");
 const cancelButton = document.querySelector("#cancel-edit");
 const logoutButton = document.getElementById("logout-button");
@@ -22,13 +23,18 @@ form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
   const modelFile = document.querySelector("#model").files[0];
+  const usdzFile = document.querySelector("#usdz").files[0];
 
 let modelUrl = editingModelUrl;
+let usdzUrl = editingUsdzUrl;
 
 if (modelFile) {
     const formData = new FormData();
 
     formData.append("model", modelFile);
+    if (usdzFile) {
+    formData.append("usdz", usdzFile);
+}
 
     const uploadResponse = await fetch("/api/upload-model", {
         method: "POST",
@@ -44,6 +50,9 @@ if (modelFile) {
     }
 
     modelUrl = uploadResult.modelUrl;
+    if (uploadResult.usdzUrl) {
+    usdzUrl = uploadResult.usdzUrl;
+}
 }
 
 const dish = {
@@ -53,6 +62,7 @@ const dish = {
     description: document.querySelector("#description").value,
     price: Number(document.querySelector("#price").value),
     modelUrl:modelUrl,
+    usdzUrl: usdzUrl,
     available: document.querySelector("#available").checked
 };
 
@@ -84,6 +94,7 @@ const response = await fetch(url, {
         form.reset();
         editingDishId = null;
         editingModelUrl = null;
+        editingUsdzUrl = "";
         submitButton.textContent = "Add Dish";
         document.querySelector("#available").checked = true;
 
@@ -212,6 +223,7 @@ document.querySelector("#dish-list").addEventListener("click", async (event) => 
         document.querySelector("#available").checked = dish.available;
 
         editingModelUrl = dish.modelUrl;
+        editingUsdzUrl = dish.usdzUrl;
         editingDishId = dish._id;
         submitButton.textContent = "Update Dish";
         cancelButton.style.display = "block";
@@ -259,6 +271,7 @@ cancelButton.addEventListener("click", () => {
 
     editingDishId = null;
     editingModelUrl = null;
+    editingUsdzUrl = "";
 
     submitButton.textContent = "Add Dish";
 

@@ -39,13 +39,14 @@ const upload = multer({
     },
 
     fileFilter: (req, file, cb) => {
-        const isGLB = file.originalname
-            .toLowerCase()
-            .endsWith(".glb");
+        const fileName = file.originalname.toLowerCase();
 
-        if (!isGLB) {
-            return cb(new Error("Only .glb files are allowed"));
-        }
+const isGLB = fileName.endsWith(".glb");
+const isUSDZ = fileName.endsWith(".usdz");
+
+if (!isGLB && !isUSDZ) {
+    return cb(new Error("Only .glb and .usdz files are allowed"));
+}
 
         cb(null, true);
     }
@@ -186,7 +187,10 @@ app.delete("/api/dishes/:id",requireAdmin, async (req, res) => {
     }
 });
 app.post("/api/upload-model", requireAdmin, (req, res) => {
-    upload.single("model")(req, res, async (error) => {
+    upload.fields([
+        { name: "model", maxCount: 1 },
+        { name: "usdz", maxCount: 1 }
+    ])(req, res, async (error) => {
         if (error) {
             console.error(error);
 
@@ -201,18 +205,19 @@ app.post("/api/upload-model", requireAdmin, (req, res) => {
             });
         }
 
-        if (!req.file) {
+        if (!req.files || !req.files.model) {
             return res.status(400).json({
-                message: "No model file uploaded"
+                message: "No GLB model file uploaded"
             });
         }
 
         try {
-            const result = await new Promise((resolve, reject) => {
-                const stream = cloudinary.uploader.upload_stream(
+            const glbResult = await new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_chunked_stream(
                     {
                         resource_type: "raw",
-                        folder: "restaurant-3d-menu"
+                        folder: "restaurant-3d-menu",
+                        chunk_size: 6000000   
                     },
                     (error, result) => {
                         if (error) {
@@ -223,12 +228,38 @@ app.post("/api/upload-model", requireAdmin, (req, res) => {
                     }
                 );
 
-                stream.end(req.file.buffer);
+                stream.end(req.files.model[0].buffer);
             });
 
+            let usdzUrl = "";
+
+            if (req.files.usdz) {
+                const usdzResult = await new Promise((resolve, reject) => {
+                    const stream = cloudinary.uploader.upload_chunked_stream(
+                        {
+                            resource_type: "raw",
+                            folder: "restaurant-3d-menu",
+                            chunk_size: 6000000
+                        },
+                        (error, result) => {
+                            if (error) {
+                                reject(error);
+                            } else {
+                                resolve(result);
+                            }
+                        }
+                    );
+
+                    stream.end(req.files.usdz[0].buffer);
+                });
+
+                usdzUrl = usdzResult.secure_url;
+            }
+
             res.json({
-                message: "Model uploaded successfully",
-                modelUrl: result.secure_url
+                message: "Models uploaded successfully",
+                modelUrl: glbResult.secure_url,
+                usdzUrl: usdzUrl
             });
 
         } catch (error) {

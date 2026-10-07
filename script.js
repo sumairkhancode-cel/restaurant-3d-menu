@@ -20,6 +20,7 @@ async function loadDish() {
 
         const modelViewer = document.querySelector("model-viewer");
         modelViewer.src = dish.modelUrl;
+        modelViewer.setAttribute("ios-src", dish.usdzUrl);
     } catch (error) {
         console.error(error);
     }

@@ -33,7 +33,12 @@ const dishSchema = new mongoose.Schema(
             required: true
         },
 
-        available: {
+        usdzUrl: {
+            type: String,
+            default: ""
+        },
+
+        available: {    
             type: Boolean,
             default: true
         }
