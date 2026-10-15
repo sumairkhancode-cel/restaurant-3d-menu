@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const session = require("express-session");
+const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
 const path = require("path");
 const Dish = require("./models/Dish");
@@ -13,20 +14,36 @@ const cloudinary = require("cloudinary").v2;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    skipSuccessfulRequests: true,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+        res.status(429).json({
+            message: "Too many failed login attempts. Login is blocked for 15 minutes; please try again later."
+        });
+    }
+});
+
+
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET || "restaurant-menu-secret",
+app.use(session({
+        secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
-        cookie: {
-            httpOnly: true
-        }
+       cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax"
+}
     })
 );
 
@@ -35,18 +52,24 @@ const storage = multer.memoryStorage();
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 20 * 1024 * 1024
+        fileSize: 9 * 1024 * 1024,
+        files: 2,
+        fields: 10,
+        parts: 12
     },
 
     fileFilter: (req, file, cb) => {
         const fileName = file.originalname.toLowerCase();
 
-const isGLB = fileName.endsWith(".glb");
-const isUSDZ = fileName.endsWith(".usdz");
+        const isAllowedType = file.fieldname === "model"
+            ? fileName.endsWith(".glb")
+            : file.fieldname === "usdz" && fileName.endsWith(".usdz");
 
-if (!isGLB && !isUSDZ) {
-    return cb(new Error("Only .glb and .usdz files are allowed"));
-}
+        if (!isAllowedType) {
+            const error = new Error("Only .glb and .usdz files are allowed.");
+            error.code = "INVALID_FILE_TYPE";
+            return cb(error);
+        }
 
         cb(null, true);
     }
@@ -54,8 +77,16 @@ if (!isGLB && !isUSDZ) {
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-app.get("/admin/", (req, res) => {
+const preventAdminPageCaching = (req, res, next) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    next();
+};
+
+app.get("/admin/", preventAdminPageCaching, (req, res) => {
     if (!req.session.adminId) {
         return res.redirect("/admin/login.html");
     }
@@ -63,7 +94,7 @@ app.get("/admin/", (req, res) => {
     res.sendFile(path.join(__dirname, "admin", "index.html"));
 });
 
-app.get("/admin/index.html", (req, res) => {
+app.get("/admin/index.html", preventAdminPageCaching, (req, res) => {
     if (!req.session.adminId) {
         return res.redirect("/admin/login.html");
     }
@@ -128,7 +159,15 @@ app.get("/api/dishes/:slug", async (req, res) => {
             });
         }
 
-        res.json(dish);
+        res.json({
+    name: dish.name,
+    slug: dish.slug,
+    category: dish.category,
+    description: dish.description,
+    price: dish.price,
+    modelUrl: dish.modelUrl,
+    usdzUrl: dish.usdzUrl
+});
     } catch (error) {
         console.error(error);
 
@@ -139,14 +178,45 @@ app.get("/api/dishes/:slug", async (req, res) => {
 });
 app.put("/api/dishes/:id",requireAdmin, async (req, res) => {
     try {
-        const dish = await Dish.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            {
-                new: true,
-                runValidators: true
-            }
-        );
+                if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                message: "Invalid dish ID"
+            });
+        }
+        
+const { name, slug, category, description, price, modelUrl, usdzUrl, available } = req.body;
+
+if (
+    typeof name !== "string" || !name.trim() ||
+    typeof slug !== "string" || !/^[a-z0-9-]+$/.test(slug) ||
+    typeof category !== "string" || !category.trim() ||
+    typeof description !== "string" || !description.trim() ||
+    !Number.isFinite(Number(price)) || Number(price) < 0 ||
+    typeof modelUrl !== "string" || !modelUrl.trim() ||
+    (usdzUrl !== undefined && typeof usdzUrl !== "string") ||
+    (available !== undefined && typeof available !== "boolean")
+) {
+    return res.status(400).json({ message: "Invalid dish data." });
+}
+
+const dish = await Dish.findByIdAndUpdate(
+    req.params.id,
+    {
+        name: name.trim(),
+        slug,
+        category: category.trim(),
+        description: description.trim(),
+        price: Number(price),
+        modelUrl,
+        usdzUrl: usdzUrl || "",
+        available: available ?? true
+    },
+    {
+        returnDocument: "after",
+        runValidators: true
+    }
+);
+
 
         if (!dish) {
             return res.status(404).json({
@@ -158,16 +228,21 @@ app.put("/api/dishes/:id",requireAdmin, async (req, res) => {
     } catch (error) {
         console.error(error);
 
-        res.status(400).json({
-            message: "Failed to update dish",
-            error: error.message
-        });
+       res.status(500).json({
+    message: "Failed to update dish."
+});
     }
 });
 
 app.delete("/api/dishes/:id",requireAdmin, async (req, res) => {
     try {
-        const dish = await Dish.findByIdAndDelete(req.params.id);
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({
+        message: "Invalid dish ID"
+    });
+}
+
+const dish = await Dish.findByIdAndDelete(req.params.id);
 
         if (!dish) {
             return res.status(404).json({
@@ -192,11 +267,15 @@ app.post("/api/upload-model", requireAdmin, (req, res) => {
         { name: "usdz", maxCount: 1 }
     ])(req, res, async (error) => {
         if (error) {
-            console.error(error);
+            if (error.code === "INVALID_FILE_TYPE") {
+                return res.status(400).json({
+                    message: error.message
+                });
+            }
 
             if (error.code === "LIMIT_FILE_SIZE") {
                 return res.status(400).json({
-                    message: "Model file is too large. Maximum size is 20 MB."
+                    message: "Each model file must be no larger than 9 MiB."
                 });
             }
 
@@ -211,8 +290,40 @@ app.post("/api/upload-model", requireAdmin, (req, res) => {
             });
         }
 
-        try {
-            const glbResult = await new Promise((resolve, reject) => {
+        
+try {
+    const { fileTypeFromBuffer } = await import("file-type");
+
+    const glbType = await fileTypeFromBuffer(req.files.model[0].buffer);
+
+    if (!glbType || glbType.ext !== "glb") {
+        return res.status(400).json({
+            message: "Invalid GLB file."
+        });
+    }
+
+    if (req.files.usdz) {
+    const usdzBuffer = req.files.usdz[0].buffer;
+
+    const usdzType = await fileTypeFromBuffer(usdzBuffer);
+
+    if (!usdzType || usdzType.ext !== "zip") {
+        return res.status(400).json({
+            message: "Invalid USDZ file."
+        });
+    }
+
+    if (usdzBuffer.length < 4 || usdzBuffer.length > 9 * 1024 * 1024) {
+        return res.status(400).json({
+            message: "Invalid USDZ file size."
+        });
+    }
+}
+
+    const glbResult = await new Promise((resolve, reject) => {
+
+            
+
                 const stream = cloudinary.uploader.upload_chunked_stream(
                     {
                         resource_type: "raw",
@@ -274,35 +385,84 @@ app.post("/api/upload-model", requireAdmin, (req, res) => {
 
 app.post("/api/dishes",requireAdmin, async (req, res) => {
     try {
-        const dish = await Dish.create(req.body);
+        const { name, slug, category, description, price, modelUrl, usdzUrl, available } = req.body;
 
-        res.status(201).json(dish);
-    } catch (error) {
-        console.error(error);
+if (
+    typeof name !== "string" || !name.trim() ||
+    typeof slug !== "string" || !/^[a-z0-9-]+$/.test(slug) ||
+    typeof category !== "string" || !category.trim() ||
+    typeof description !== "string" || !description.trim() ||
+    !Number.isFinite(Number(price)) || Number(price) < 0 ||
+    typeof modelUrl !== "string" || !modelUrl.trim() ||
+    (usdzUrl !== undefined && typeof usdzUrl !== "string") ||
+    (available !== undefined && typeof available !== "boolean")
+) {
+    return res.status(400).json({ message: "Invalid dish data." });
+}
 
-        res.status(400).json({
-            message: "Failed to create dish",
-            error: error.message
-        });
-    }
+const dish = await Dish.create({
+    name: name.trim(),
+    slug,
+    category: category.trim(),
+    description: description.trim(),
+    price: Number(price),
+    modelUrl,
+    usdzUrl: usdzUrl || "",
+    available: available ?? true
 });
 
-app.post("/api/admin/login", async (req, res) => {
+        res.status(201).json(dish);
+    }catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+        message: "Failed to create dish."
+    });
+}
+
+    }
+);
+
+app.post(["/api/admin/login", "/admin/login"], loginLimiter, async (req, res) => {
+    const isBrowserLogin = req.path === "/admin/login";
+    const sendBrowserError = (status, message) => res.status(status).type("html").send(
+        `<!doctype html><html lang="en"><meta charset="utf-8"><title>Admin login</title><body><main><h1>Login failed</h1><p>${message}</p><a href="/admin/login.html">Try again</a></main></body></html>`
+    );
+    const sendInvalidCredentials = () => {
+        const attemptsRemaining = req.rateLimit ? req.rateLimit.remaining : 0;
+        const message = attemptsRemaining === 0
+            ? "Wrong username or password. No attempts remain; further login attempts are blocked for 15 minutes."
+            : `Wrong username or password. ${attemptsRemaining} ${attemptsRemaining === 1 ? "attempt" : "attempts"} remaining before a 15-minute lockout.`;
+
+        if (isBrowserLogin) {
+            return sendBrowserError(401, message);
+        }
+
+        return res.status(401).json({ message });
+    };
+
     try {
         const { username, password } = req.body;
 
-        if (!username || !password) {
-            return res.status(400).json({
-                message: "Username and password are required."
-            });
-        }
+        if (
+    typeof username !== "string" ||
+    typeof password !== "string" ||
+    !username.trim() ||
+    !password
+) {
+    if (isBrowserLogin) {
+        return sendBrowserError(400, "Username and password are required.");
+    }
+
+    return res.status(400).json({
+        message: "Username and password are required."
+    });
+}
 
         const admin = await Admin.findOne({ username });
 
         if (!admin) {
-            return res.status(401).json({
-                message: "Invalid username or password."
-            });
+            return sendInvalidCredentials();
         }
 
         const passwordMatch = await bcrypt.compare(
@@ -311,23 +471,57 @@ app.post("/api/admin/login", async (req, res) => {
         );
 
         if (!passwordMatch) {
-            return res.status(401).json({
-                message: "Invalid username or password."
+            return sendInvalidCredentials();
+        }
+
+        req.session.regenerate((err) => {
+    if (err) {
+        console.error("Session regeneration error:", err);
+
+        if (isBrowserLogin) {
+            return sendBrowserError(500, "Server error.");
+        }
+
+        return res.status(500).json({
+            message: "Server error."
+        });
+    }
+
+    req.session.adminId = admin._id.toString();
+
+    req.session.save((err) => {
+        if (err) {
+            console.error("Session save error:", err);
+
+            if (isBrowserLogin) {
+                return sendBrowserError(500, "Server error.");
+            }
+
+            return res.status(500).json({
+                message: "Server error."
             });
         }
 
-        req.session.adminId = admin._id.toString();
-
-        res.json({
-            message: "Login successful."
-        });
+            if (isBrowserLogin) {
+                res.redirect(303, "/admin/");
+            } else {
+                res.json({
+                    message: "Login successful."
+                });
+            }
+    });
+});
 
     } catch (error) {
-        console.error("Admin login error:", error);
+            console.error("Admin login error:", error);
 
-        res.status(500).json({
-            message: "Server error."
-        });
+            if (isBrowserLogin) {
+                return sendBrowserError(500, "Server error.");
+            }
+
+            res.status(500).json({
+                message: "Server error."
+            });
     }
 });
 app.post("/api/admin/logout", (req, res) => {
@@ -340,7 +534,11 @@ app.post("/api/admin/logout", (req, res) => {
             });
         }
 
-        res.clearCookie("connect.sid");
+        res.clearCookie("connect.sid", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax"
+});
 
         res.json({
             message: "Logout successful."
@@ -356,5 +554,3 @@ function requireAdmin(req, res, next) {
 
     next();
 }
-
-

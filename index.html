@@ -10,7 +10,7 @@
 
     <script
         type="module"
-        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js">
+        src="/node_modules/@google/model-viewer/dist/model-viewer.min.js">
     </script>
 </head>
 
@@ -38,8 +38,7 @@
             <div class="viewer-container">
 
                 <model-viewer
-                    src="./models/sushi-original.glb"
-                    alt="3D model of Premium Sushi"
+                    alt=""
                     camera-controls
                     auto-rotate
                     shadow-intensity="1"
@@ -54,6 +53,8 @@
 
                 </model-viewer>
 
+                <p class="viewer-message" aria-live="polite"></p>
+
                 <p class="viewer-hint">
                     👆 Drag to rotate · 🤏 Pinch to zoom
                 </p>
@@ -64,5 +65,6 @@
 
     </main>
 
+    <script src="script.js"></script>
 </body>
 </html>

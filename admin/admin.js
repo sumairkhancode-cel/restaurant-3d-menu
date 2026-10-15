@@ -7,6 +7,26 @@ const submitButton = form.querySelector("button[type='submit']");
 const cancelButton = document.querySelector("#cancel-edit");
 const logoutButton = document.getElementById("logout-button");
 
+window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+
+window.addEventListener("pagehide", () => {
+    if (typeof navigator.sendBeacon === "function" &&
+        navigator.sendBeacon("/api/admin/logout")) {
+        return;
+    }
+
+    fetch("/api/admin/logout", {
+        method: "POST",
+        keepalive: true
+    }).catch((error) => {
+        console.error("Admin session logout on page exit failed:", error);
+    });
+});
+
 cancelButton.style.display = "none";
 const nameInput = document.querySelector("#name");
 const slugInput = document.querySelector("#slug");
@@ -22,8 +42,24 @@ nameInput.addEventListener("input", () => {
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    try {
   const modelFile = document.querySelector("#model").files[0];
   const usdzFile = document.querySelector("#usdz").files[0];
+
+if (modelFile && !modelFile.name.toLowerCase().endsWith(".glb")) {
+    alert("Only .glb files are accepted for the 3D model.");
+    return;
+}
+
+if (usdzFile && !usdzFile.name.toLowerCase().endsWith(".usdz")) {
+    alert("Only .usdz files are accepted for the iPhone AR model.");
+    return;
+}
+
+const isEditing = Boolean(editingDishId);
+submitButton.disabled = true;
+submitButton.textContent = isEditing ? "Updating Dish..." : "Adding Dish...";
+message.textContent = isEditing ? "Updating dish..." : "Adding dish...";
 
 let modelUrl = editingModelUrl;
 let usdzUrl = editingUsdzUrl;
@@ -44,9 +80,10 @@ if (modelFile) {
     const uploadResult = await uploadResponse.json();
 
     if (!uploadResponse.ok) {
-        throw new Error(
-            uploadResult.message || "Failed to upload model"
-        );
+        const errorMessage = uploadResult.message || "Model upload failed.";
+        message.textContent = errorMessage;
+        alert(errorMessage);
+        return;
     }
 
     modelUrl = uploadResult.modelUrl;
@@ -66,7 +103,6 @@ const dish = {
     available: document.querySelector("#available").checked
 };
 
-    try {
         const url = editingDishId
     ? `/api/dishes/${editingDishId}`
     : "/api/dishes";
@@ -98,10 +134,14 @@ const response = await fetch(url, {
         submitButton.textContent = "Add Dish";
         document.querySelector("#available").checked = true;
 
+        await loadDishes();
         console.log(result);
     } catch (error) {
         message.textContent = error.message;
         console.error(error);
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = editingDishId ? "Update Dish" : "Add Dish";
     }
 });
 async function loadDishes() {
@@ -116,52 +156,69 @@ async function loadDishes() {
 
         const dishes = await response.json();
 
-        dishList.innerHTML = "";
+        dishList.replaceChildren();
 
         dishes.forEach((dish) => {
             const dishItem = document.createElement("div");
-
             dishItem.className = "admin-dish";
 
-            dishItem.innerHTML = `
-    <div class="dish-details">
+            const dishDetails = document.createElement("div");
+            dishDetails.className = "dish-details";
 
-        <h3>${dish.name}</h3>
+            const name = document.createElement("h3");
+            name.textContent = dish.name;
+            dishDetails.appendChild(name);
 
-        <p>${dish.category}</p>
+            const category = document.createElement("p");
+            category.textContent = dish.category;
+            dishDetails.appendChild(category);
 
-        <p>Rs. ${dish.price}</p>
+            const price = document.createElement("p");
+            price.textContent = `Rs. ${dish.price}`;
+            dishDetails.appendChild(price);
 
-        <p>Status: ${dish.available ? "Available" : "Unavailable"}</p>
+            const status = document.createElement("p");
+            status.textContent = `Status: ${dish.available ? "Available" : "Unavailable"}`;
+            dishDetails.appendChild(status);
 
-        <a href="/food/${dish.slug}" target="_blank">
-            Open Dish
-        </a>
+            const dishUrl = `/food/${encodeURIComponent(dish.slug)}`;
+            const dishLink = document.createElement("a");
+            dishLink.href = dishUrl;
+            dishLink.target = "_blank";
+            dishLink.rel = "noopener noreferrer";
+            dishLink.textContent = "Open Dish";
+            dishDetails.appendChild(dishLink);
 
-        <div class="dish-actions">
-            <button class="edit-button" data-id="${dish._id}">
-                Edit
-            </button>
+            const actions = document.createElement("div");
+            actions.className = "dish-actions";
 
-            <button class="delete-button" data-id="${dish._id}">
-                Delete
-            </button>
-        </div>
+            const editButton = document.createElement("button");
+            editButton.className = "edit-button";
+            editButton.dataset.id = dish._id;
+            editButton.textContent = "Edit";
+            actions.appendChild(editButton);
 
-    </div>
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "delete-button";
+            deleteButton.dataset.id = dish._id;
+            deleteButton.textContent = "Delete";
+            actions.appendChild(deleteButton);
 
-    <div class="qr-section">
+            dishDetails.appendChild(actions);
+            dishItem.appendChild(dishDetails);
 
-        <div class="qr-code" id="qr-${dish._id}"></div>
+            const qrSection = document.createElement("div");
+            qrSection.className = "qr-section";
 
-    </div>
-`;
+            const qrContainer = document.createElement("div");
+            qrContainer.className = "qr-code";
+            qrSection.appendChild(qrContainer);
+            dishItem.appendChild(qrSection);
 
             dishList.appendChild(dishItem);
-            const qrContainer = dishItem.querySelector(`#qr-${dish._id}`);
 
 new QRCode(qrContainer, {
-    text: `${window.location.origin}/food/${dish.slug}`,
+    text: `${window.location.origin}${dishUrl}`,
     width: 150,
     height: 150
 });
@@ -286,7 +343,7 @@ logoutButton.addEventListener("click", async () => {
         });
 
         if (response.ok) {
-            window.location.href = "/admin/login.html";
+            window.location.replace("/admin/login.html");
         } else {
             alert("Logout failed.");
         }

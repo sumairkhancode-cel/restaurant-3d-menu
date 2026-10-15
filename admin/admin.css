@@ -33,6 +33,32 @@ body {
     letter-spacing: 2px;
 }
 
+#logout-button {
+    padding: 10px 16px;
+    border: 1px solid #222;
+    border-radius: 10px;
+    background: #222;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+#logout-button:hover {
+    background: white;
+    color: #222;
+}
+
+#logout-button:focus-visible {
+    outline: 3px solid rgba(34, 34, 34, 0.35);
+    outline-offset: 3px;
+}
+
+#logout-button:active {
+    transform: translateY(1px);
+}
+
 .admin-container {
     max-width: 700px;
     margin: 50px auto;
