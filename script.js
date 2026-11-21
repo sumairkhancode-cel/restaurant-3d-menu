@@ -1,5 +1,23 @@
 async function loadDish() {
     const viewerMessage = document.querySelector(".viewer-message");
+    const modelViewer = document.querySelector("model-viewer");
+    const whatsappButton = modelViewer.querySelector(".whatsapp-ar-button");
+    const whatsappOrderLinks = document.querySelectorAll(".whatsapp-order-button");
+    const whatsappFallbackButton = document.querySelector(".whatsapp-fallback-button");
+    let isARActive = false;
+    let hasWhatsAppNumber = false;
+
+    const updateWhatsAppButtonVisibility = () => {
+        whatsappButton.hidden = !isARActive || !hasWhatsAppNumber;
+        whatsappFallbackButton.hidden = isARActive || !hasWhatsAppNumber;
+    };
+
+    modelViewer.addEventListener("ar-status", (event) => {
+        isARActive = event.detail.status === "session-started" ||
+            event.detail.status === "object-placed";
+        updateWhatsAppButtonVisibility();
+    });
+
     if (viewerMessage) {
         viewerMessage.textContent = "Loading dish...";
     }
@@ -29,10 +47,30 @@ async function loadDish() {
             dish.description;
         document.querySelector(".price").textContent = `Rs. ${dish.price}`;
 
-        const modelViewer = document.querySelector("model-viewer");
         modelViewer.src = dish.modelUrl;
         modelViewer.alt = `3D model of ${dish.name}`;
         modelViewer.setAttribute("ios-src", dish.usdzUrl);
+
+        const whatsappResponse = await fetch("/api/whatsapp");
+        const whatsappConfig = await whatsappResponse.json();
+        if (!whatsappResponse.ok) {
+            throw new Error(whatsappConfig.message || "WhatsApp ordering is unavailable.");
+        }
+
+        if (typeof whatsappConfig.number !== "string" ||
+            !/^\d{7,15}$/.test(whatsappConfig.number)) {
+            throw new Error("The configured WhatsApp number is invalid.");
+        }
+
+        const message = `Hi, I would like to order ${dish.name}.`;
+        const whatsappUrl =
+            `https://wa.me/${whatsappConfig.number}?text=${encodeURIComponent(message)}`;
+        whatsappOrderLinks.forEach((link) => {
+            link.href = whatsappUrl;
+        });
+        hasWhatsAppNumber = true;
+        updateWhatsAppButtonVisibility();
+
         if (viewerMessage) {
             viewerMessage.textContent = "";
         }

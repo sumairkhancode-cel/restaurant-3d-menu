@@ -139,6 +139,63 @@ model-viewer {
     white-space: nowrap;
 }
 
+.whatsapp-ar-button {
+    position: absolute;
+    z-index: 1;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    background: #00b85a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.whatsapp-order-button[hidden] {
+    display: none;
+}
+
+.whatsapp-fallback-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: fit-content;
+    margin: 12px 0 0;
+    padding: 11px 20px;
+    border-radius: 999px;
+    background: #00b85a;
+    color: #fff;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.whatsapp-fallback-button svg {
+    width: 21px;
+    height: 21px;
+    fill: currentColor;
+}
+
+.whatsapp-ar-button svg {
+    width: 21px;
+    height: 21px;
+    fill: currentColor;
+}
+
 @media (max-width: 800px) {
 
     .menu-page {
@@ -197,15 +254,4 @@ model-viewer {
         padding: 12px 18px;
         font-size: 14px;
     }
-}
-.ar-fallback {
-    margin: 10px auto;
-    max-width: 90%;
-    padding: 10px 14px;
-    background: #f5f5f5;
-    border-radius: 10px;
-    color: #555;
-    font-size: 14px;
-    line-height: 1.5;
-    text-align: center;
 }

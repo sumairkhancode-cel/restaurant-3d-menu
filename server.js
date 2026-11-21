@@ -147,6 +147,29 @@ app.get("/api/dishes", async (req, res) => {
     }
 });
 
+app.get("/api/whatsapp", (req, res) => {
+    const rawNumber = process.env.WHATSAPP_NUMBER;
+
+    if (!rawNumber || !rawNumber.trim()) {
+        return res.status(503).json({
+            message: "WhatsApp ordering is not configured. Set WHATSAPP_NUMBER in .env."
+        });
+    }
+
+    const formattedNumber = rawNumber.trim();
+    const number = formattedNumber.replace(/\D/g, "");
+    if (
+        !/^\+?[\d\s().-]+$/.test(formattedNumber) ||
+        !/^\d{7,15}$/.test(number)
+    ) {
+        return res.status(500).json({
+            message: "The configured WhatsApp number must include 7 to 15 digits."
+        });
+    }
+
+    res.json({ number });
+});
+
 app.get("/api/dishes/:slug", async (req, res) => {
     try {
         const dish = await Dish.findOne({
